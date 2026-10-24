@@ -94,8 +94,10 @@ main{flex:1;overflow-y:auto;background:#f8f9fa;position:relative}
 .tr-col span:first-child{font-size:.65rem;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:2px}
 .tr-col span:last-child{font-size:1rem;font-weight:700;color:#111}
 
-.btn-outline-blue{display:block;width:100%;padding:14px;background:#fff;border:1px solid #026cdf;color:#026cdf;border-radius:8px;font-size:.95rem;font-weight:700;text-align:center;margin-bottom:10px;cursor:pointer}
-.btn-solid-blue{display:block;width:100%;padding:14px;background:#026cdf;border:1px solid #026cdf;color:#fff;border-radius:8px;font-size:.95rem;font-weight:700;text-align:center;margin-bottom:10px;cursor:pointer}
+.btn-outline-blue{display:block;width:100%;padding:14px;background:#fff;border:1px solid #026cdf;color:#026cdf;border-radius:8px;font-size:.95rem;font-weight:700;text-align:center;margin-bottom:10px;cursor:pointer;transition:.2s}
+.btn-outline-blue:active{background:#f0f7ff}
+.btn-solid-blue{display:block;width:100%;padding:14px;background:#026cdf;border:1px solid #026cdf;color:#fff;border-radius:8px;font-size:.95rem;font-weight:700;text-align:center;margin-bottom:10px;cursor:pointer;transition:.2s}
+.btn-solid-blue:active{background:#005bbd}
 
 /* --- MY ACCOUNT TAB --- */
 .account-header{padding:40px 20px;text-align:center;background:#fff;border-bottom:1px solid #eee}
@@ -165,13 +167,13 @@ main{flex:1;overflow-y:auto;background:#f8f9fa;position:relative}
 .qty-btn{width:40px;height:40px;background:#f8f9fa;border:none;font-size:1.2rem;font-weight:bold;cursor:pointer}
 .qty-input{width:40px;text-align:center;border:none;font-weight:bold;font-size:1rem;outline:none}
 
-/* ================= PAYMENT METHOD CARDS ================= */
-.pay-method-card{display:flex;align-items:center;gap:16px;padding:16px;border:1px solid #eee;border-radius:12px;margin-bottom:14px;cursor:pointer;background:#fff;transition:.2s;box-shadow:0 2px 8px rgba(0,0,0,0.02)}
-.pay-method-card:hover{border-color:#026cdf;background:#f0f7ff;transform:translateY(-2px);box-shadow:0 4px 12px rgba(2,108,223,0.1)}
-.pay-method-icon{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;color:white;font-size:1.2rem;flex-shrink:0}
-.bg-btc{background:#f7931a}
-.bg-gift{background:#e91e63}
-.bg-paypal{background:#003087}
+/* ================= NEW PROFESSIONAL PAYMENT CARDS ================= */
+.pay-method-card{display:flex;align-items:center;gap:16px;padding:18px 16px;border:1px solid #e0e0e0;border-radius:12px;margin-bottom:12px;cursor:pointer;background:#fff;transition:.2s;box-shadow:0 2px 10px rgba(0,0,0,0.02)}
+.pay-method-card:hover{border-color:#026cdf;background:#fafbfc;transform:translateY(-2px);box-shadow:0 6px 15px rgba(2,108,223,0.08)}
+.pay-badge{width:50px;height:50px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;letter-spacing:0.5px;flex-shrink:0}
+.badge-btc{background:#fff3e0;color:#f7931a;border:1px solid #ffe0b2}
+.badge-gift{background:#fce4ec;color:#e91e63;border:1px solid #f8bbd0}
+.badge-paypal{background:#e3f2fd;color:#003087;border:1px solid #bbdefb}
 .pay-method-text h3{font-size:1rem;font-weight:700;margin-bottom:2px;color:#111}
 .pay-method-text p{font-size:.8rem;color:#666;margin:0}
 
@@ -357,7 +359,7 @@ main{flex:1;overflow-y:auto;background:#f8f9fa;position:relative}
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script>
 const BITCOIN_ADDRESS = "bc1qc5zkyn839lqh7yu3hpmxk4kfcnj8007t3lqyky";
-const TELEGRAM_LINK = "https://t.me/realticketmastersupport"; // UPDATED
+const TELEGRAM_LINK = "https://t.me/realticketmastersupport";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAueqbCcGN_LKDTd6YnPkPcWSIufFqsqwM",
@@ -372,7 +374,6 @@ if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Keep user logged in
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
 const $ = id => document.getElementById(id);
@@ -662,13 +663,35 @@ function loadMyTickets() {
                 <div class="tr-col"><span>Status</span><span style="color:${o.status === 'confirmed' ? '#00a650' : '#f5a623'};text-transform:capitalize;">${o.status}</span></div>
               </div>
             </div>
-            <button class="btn-outline-blue" onclick="showToast('Selling will be available soon.')">Sell</button>
-            <button class="btn-solid-blue" onclick="showToast('Transferring will be available soon.')">Transfer</button>
+            <button class="btn-outline-blue" onclick="showSellTransferPopup('Sell')">Sell</button>
+            <button class="btn-solid-blue" onclick="showSellTransferPopup('Transfer')">Transfer</button>
           </div>
         `;
       });
       container.innerHTML = html;
     });
+}
+
+/* ============================================================
+   NEW SELL/TRANSFER POPUP
+   ============================================================ */
+function showSellTransferPopup(type) {
+  $("modalTitle").textContent = type + " Ticket";
+  $("modalContent").innerHTML = `
+    <div style="padding:40px 24px; text-align:center;">
+      <h2 style="font-size:1.5rem; font-weight:800; margin-bottom:12px;">${type} Ticket</h2>
+      <p style="color:#666; font-size:.95rem; line-height:1.6; margin-bottom:28px;">
+        To ${type.toLowerCase()} your ticket, please message us on Telegram. Our support team will assist you with the process.
+      </p>
+      
+      <a href="${TELEGRAM_LINK}" target="_blank" style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:16px; background:#026cdf; color:#fff; text-decoration:none; border-radius:10px; font-weight:700; font-size:1rem; margin-bottom:16px; box-shadow:0 4px 12px rgba(2,108,223,0.3);">
+        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+        Message us on Telegram
+      </a>
+      <button class="btn-outline-blue" onclick="closeModal()">Cancel</button>
+    </div>
+  `;
+  openModal();
 }
 
 function openModal() { $("modal").classList.add("open"); }
@@ -746,7 +769,7 @@ function processCheckout(qty) {
 }
 
 // ============================================
-// NEW PAYMENT SELECTION FLOW
+// NEW PROFESSIONAL PAYMENT SELECTION FLOW
 // ============================================
 function showPaymentScreen(orderId, totalAmount) {
   if (!auth.currentUser) { showToast("Please log in"); openAuthModal(); return; }
@@ -756,21 +779,21 @@ function showPaymentScreen(orderId, totalAmount) {
 
   $("modalTitle").textContent = "Payment Options";
   $("modalContent").innerHTML = `
-    <div style="padding:20px;">
-      <p style="text-align:center; color:#666; margin-bottom:20px;">Select how you would like to pay for your ticket(s).</p>
+    <div style="padding:24px 20px;">
+      <p style="text-align:center; color:#666; margin-bottom:24px; font-weight:500;">Select how you would like to pay for your ticket(s).</p>
       
       <!-- BITCOIN -->
       <div class="pay-method-card" onclick="selectPaymentMethod('Bitcoin')">
-        <div class="pay-method-icon bg-btc">₿</div>
+        <div class="pay-badge badge-btc">BTC</div>
         <div class="pay-method-text">
-          <h3>Bitcoin Transfer</h3>
+          <h3>Bitcoin</h3>
           <p>Pay securely with crypto</p>
         </div>
       </div>
       
       <!-- GIFT CARD -->
       <div class="pay-method-card" onclick="selectPaymentMethod('Gift Card')">
-        <div class="pay-method-icon bg-gift">🎁</div>
+        <div class="pay-badge badge-gift">GIFT</div>
         <div class="pay-method-text">
           <h3>Gift Card</h3>
           <p>Pay using an Apple, Steam, or other gift card</p>
@@ -779,21 +802,20 @@ function showPaymentScreen(orderId, totalAmount) {
       
       <!-- PAYPAL -->
       <div class="pay-method-card" onclick="selectPaymentMethod('PayPal')">
-        <div class="pay-method-icon bg-paypal">P</div>
+        <div class="pay-badge badge-paypal">PAYPAL</div>
         <div class="pay-method-text">
           <h3>PayPal</h3>
           <p>Pay via your PayPal account</p>
         </div>
       </div>
 
-      <button class="btn-outline-blue" style="margin-top:10px;" onclick="closeModal()">Cancel</button>
+      <button class="btn-outline-blue" style="margin-top:16px;" onclick="closeModal()">Cancel</button>
     </div>
   `;
   openModal();
 }
 
 function selectPaymentMethod(method) {
-  // Update database with selected method
   db.collection("orders").doc(activeOrderId).update({ paymentMethod: method });
   
   if (method === 'Bitcoin') {
@@ -827,16 +849,13 @@ function showBitcoinScreen() {
 function showManualPaymentScreen(method) {
   $("modalTitle").textContent = method + " Payment";
   $("modalContent").innerHTML = `
-    <div style="padding:30px 20px; text-align:center;">
-      <div style="font-size:3rem; margin-bottom:16px;">
-        ${method === 'Gift Card' ? '🎁' : 'P'}
-      </div>
-      <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:12px;">${method} Payment</h2>
-      <p style="color:#666; font-size:1rem; line-height:1.6; margin-bottom:24px;">
+    <div style="padding:40px 24px; text-align:center;">
+      <h2 style="font-size:1.5rem; font-weight:800; margin-bottom:12px;">${method} Payment</h2>
+      <p style="color:#666; font-size:.95rem; line-height:1.6; margin-bottom:28px;">
         Please message us on Telegram to process your ${method} payment. Our support team will guide you through the next steps.
       </p>
       
-      <a href="${TELEGRAM_LINK}" target="_blank" style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:16px; background:#026cdf; color:#fff; text-decoration:none; border-radius:10px; font-weight:700; font-size:1rem; margin-bottom:20px; box-shadow:0 4px 12px rgba(2,108,223,0.3);">
+      <a href="${TELEGRAM_LINK}" target="_blank" style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:16px; background:#026cdf; color:#fff; text-decoration:none; border-radius:10px; font-weight:700; font-size:1rem; margin-bottom:16px; box-shadow:0 4px 12px rgba(2,108,223,0.3);">
         <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
         Message us on Telegram
       </a>
